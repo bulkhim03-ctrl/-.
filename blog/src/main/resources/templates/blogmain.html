@@ -15,7 +15,7 @@
         <p><strong>Анонс:</strong> <span th:text="${el.anons}"></span></p>
         <p><strong>Полный текст:</strong> <span th:text="${el.text_full}"></span></p>
         <p><strong>Просмотры:</strong> <span th:text="${el.views}"></span></p>
-        <p><strong>Дата:</strong> <span th:text="${el.date}"></span></p>
+        <p><strong>Дата:</strong> <span th:text="${#temporals.format(el.date, 'dd.MM.yyyy HH:mm')}"></span></p>
         <hr>
     </div>
     
