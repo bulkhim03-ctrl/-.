@@ -1,5 +1,7 @@
 package com.itproger.blog.models;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,6 +14,7 @@ public class Post {
     private long id;
     private String title, anons, text_full;
     private int views;
+    private LocalDateTime date;
 
     public long getId(){
         return id;
@@ -51,5 +54,13 @@ public class Post {
 
     public void setViews(int views){
         this.views=views;
+    }
+
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDateTime date) {
+        this.date = date;
     }
 }
