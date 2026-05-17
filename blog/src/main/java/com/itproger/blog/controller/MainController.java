@@ -12,5 +12,4 @@ public class MainController {
         model.addAttribute("title", "Главная страница сайта, создатель Хисамиев Булат");
         return "home";
     }
-
 }
