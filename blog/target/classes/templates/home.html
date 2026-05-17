@@ -99,17 +99,7 @@
 <body>
 
     <!-- Шапка сайта -->
-    <header class="header">
-        <div class="nav-container">
-            <span class="creator">Создатель Хисамиев Булат</span>
-            <div class="divider"></div>
-            <div class="nav-links">
-                <a href="#">О нас</a>
-                <a href="#" class="dev">В разработке</a>
-                <a href="#" class="dev">В разработке</a>
-            </div>
-        </div>
-    </header>
+    <div th:insert="main_html :: main_html"></div>
 
     <!-- Темная линия снизу шапки -->
     <div class="bottom-line"></div>
@@ -117,7 +107,7 @@
     <!-- Основной контент -->
     <div class="content">
         <h1 th:text="${title}">Заголовок</h1>
-        <p>Добро пожаловать на мой сайт!</p>
+        <p>Добро пожаловать на данный сайт!</p>
     </div>
 
 </body>
