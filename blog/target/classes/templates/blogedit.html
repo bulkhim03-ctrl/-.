@@ -1,0 +1,71 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Редактирование статьи</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .edit-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: Arial;
+        }
+        textarea {
+            height: 200px;
+            resize: vertical;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .btn-back {
+            background: #666;
+        }
+        .btn-back:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div th:insert="main_html :: main_html"></div>
+    
+    <div class="edit-container">
+        <h1>✏️ Редактирование статьи</h1>
+        
+        <form th:action="@{/blog/{id}/edit(id=${post.id})}" method="post">
+            <input type="text" name="title" th:value="${post.title}" placeholder="Заголовок статьи" required><br>
+            <input type="text" name="anons" th:value="${post.anons}" placeholder="Анонс статьи" required><br>
+            <textarea name="full_text" placeholder="Текст статьи" required th:text="${post.text_full}"></textarea><br>
+            <button type="submit">💾 Сохранить изменения</button>
+            <a href="/blog" class="btn-back" style="display: inline-block; text-decoration: none; background: #666; color: white; padding: 10px 20px; border-radius: 5px;">❌ Отмена</a>
+        </form>
+    </div>
+</body>
+</html>

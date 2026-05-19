@@ -40,28 +40,33 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/home", "/register", "/login-page", "/api/register").permitAll()
+                .requestMatchers(
+                    "/", "/home", "/register", "/login-page", "/api/register",
+                    // Swagger UI paths
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/swagger-resources/**",
+                    "/swagger-resources",
+                    "/webjars/**"
+                ).permitAll()
                 .requestMatchers("/css/**", "/js/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilter(jwtAuthenticationFilter)
             .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
-            // ВАЖНО: обрабатываем ошибки аутентификации - редирект на логин
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, authException) -> {
-                    // Проверяем, не AJAX ли запрос
                     String requestedWith = request.getHeader("X-Requested-With");
                     boolean isAjax = "XMLHttpRequest".equals(requestedWith);
                     
                     if (isAjax) {
-                        // Для AJAX запросов возвращаем JSON
                         response.setContentType("application/json");
                         response.setCharacterEncoding("UTF-8");
                         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                         response.getWriter().write("{\"message\":\"Требуется авторизация\"}");
                     } else {
-                        // Для обычных запросов - редирект на страницу входа
                         response.sendRedirect("/login-page");
                     }
                 })
