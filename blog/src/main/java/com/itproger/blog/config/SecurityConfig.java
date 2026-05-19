@@ -4,6 +4,7 @@ import com.itproger.blog.filter.JwtAuthenticationFilter;
 import com.itproger.blog.filter.JwtAuthorizationFilter;
 import com.itproger.blog.service.CustomUserDetailsService;
 import com.itproger.blog.service.JwtService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,7 +46,26 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .addFilter(jwtAuthenticationFilter)
-            .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
+            // ВАЖНО: обрабатываем ошибки аутентификации - редирект на логин
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
+                    // Проверяем, не AJAX ли запрос
+                    String requestedWith = request.getHeader("X-Requested-With");
+                    boolean isAjax = "XMLHttpRequest".equals(requestedWith);
+                    
+                    if (isAjax) {
+                        // Для AJAX запросов возвращаем JSON
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("{\"message\":\"Требуется авторизация\"}");
+                    } else {
+                        // Для обычных запросов - редирект на страницу входа
+                        response.sendRedirect("/login-page");
+                    }
+                })
+            );
         
         return http.build();
     }

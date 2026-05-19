@@ -43,7 +43,7 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    window.location.href = '/blog';
+                    window.location.href = '/';
                 } else {
                     messageDiv.innerText = data.message || 'Ошибка при входе';
                 }
