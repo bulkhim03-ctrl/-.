@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Список статей</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .post-card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .post-title {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .post-title a {
+            color: #333;
+            text-decoration: none;
+        }
+        .post-title a:hover {
+            color: #667eea;
+        }
+        .post-meta {
+            color: #666;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .post-anons {
+            color: #555;
+            margin: 10px 0;
+        }
+        .post-actions {
+            margin-top: 15px;
+        }
+        .btn-edit, .btn-delete {
+            padding: 5px 12px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-edit {
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+        .header-blog {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .btn-add {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .btn-add:hover {
+            background: #5a67d8;
+        }
+        .welcome {
+            font-size: 14px;
+            color: #666;
+        }
+        .logout-link {
+            color: red;
+            text-decoration: none;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div th:insert="main_html :: main_html"></div>
+    
+    <div class="header-blog">
+        <h1>📝 Список статей</h1>
+        <div>
+            <span class="welcome">Привет, <strong th:text="${currentUser}"></strong>! 👋</span>
+            <a href="/blog/add" class="btn-add">➕ Добавить статью</a>
+            <a href="#" onclick="logout(event)" class="logout-link">🚪 Выйти</a>
+        </div>
+    </div>
+    
+    <div th:each="post : ${posts}">
+        <div class="post-card">
+            <h2 class="post-title">
+                <a th:href="@{/blog/{id}(id=${post.id})}" th:text="${post.title}">Заголовок</a>
+            </h2>
+            <div class="post-meta">
+                👤 Автор: <span th:text="${post.author}"></span> |
+                📅 Дата: <span th:text="${#temporals.format(post.date, 'dd.MM.yyyy HH:mm')}"></span> |
+                👁️ Просмотры: <span th:text="${post.views}"></span>
+            </div>
+            <div class="post-anons" th:text="${post.anons}"></div>
+            
+            <!-- Кнопки редактирования и удаления (только для автора) -->
+            <div class="post-actions" th:if="${currentUser != null and currentUser == post.author}">
+                <a th:href="@{/blog/{id}/edit(id=${post.id})}" class="btn-edit">✏️ Редактировать</a>
+                <form th:action="@{/blog/{id}/delete(id=${post.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn-delete" onclick="return confirm('Удалить статью?')">🗑️ Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div th:if="${posts == null or posts.empty}">
+        <p style="color: red; text-align: center;">📭 Нет статей в базе данных! Создайте первую статью.</p>
+    </div>
+    
+    <script>
+        function logout(event) {
+            event.preventDefault();
+            document.cookie = "jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            window.location.href = "/login-page";
+        }
+    </script>
+</body>
+</html>
