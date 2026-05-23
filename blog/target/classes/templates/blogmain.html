@@ -84,6 +84,17 @@
             text-decoration: none;
             margin-left: 10px;
         }
+        .btn-export {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+        .btn-export:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -94,6 +105,7 @@
         <div>
             <span class="welcome">Привет, <strong th:text="${currentUser}"></strong>! 👋</span>
             <a href="/blog/add" class="btn-add">➕ Добавить статью</a>
+            <a href="/blog/export-excel" class="btn-export">📊 Excel отчёт</a>
             <a href="#" onclick="logout(event)" class="logout-link">🚪 Выйти</a>
         </div>
     </div>
