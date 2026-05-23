@@ -1,14 +1,24 @@
 package com.itproger.blog.controller;
 
+import java.io.ByteArrayInputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
 import com.itproger.blog.models.Post;
 import com.itproger.blog.repo.PostRepozitori;
-import java.util.Optional;
+import com.itproger.blog.services.AuthService;
+import com.itproger.blog.services.ExcelReportService;
 
 @Controller
 public class BlogController {
@@ -16,13 +26,18 @@ public class BlogController {
     @Autowired
     private PostRepozitori postRepozitori;
     
-    // Получить имя текущего авторизованного пользователя
+    @Autowired
+    private AuthService authService;
+    
+    @Autowired
+    private ExcelReportService excelReportService;
+    
     private String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
-            return auth.getName();
+        try {
+            return authService.getUserLoggedInfo().username();
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 
     @GetMapping("/blog")
@@ -33,7 +48,6 @@ public class BlogController {
         return "blogmain";
     }
     
-    // Детальная страница статьи
     @GetMapping("/blog/{id}")
     public String blogDetail(@PathVariable(value = "id") long id, Model model) {
         Optional<Post> post = postRepozitori.findById(id);
@@ -41,7 +55,6 @@ public class BlogController {
             return "redirect:/blog";
         }
         
-        // Увеличиваем просмотры
         Post article = post.get();
         article.setViews(article.getViews() + 1);
         postRepozitori.save(article);
@@ -66,7 +79,6 @@ public class BlogController {
         return "redirect:/blog";
     }
     
-    // Редактирование статьи
     @GetMapping("/blog/{id}/edit")
     public String blogEdit(@PathVariable(value = "id") long id, Model model) {
         Optional<Post> post = postRepozitori.findById(id);
@@ -74,7 +86,6 @@ public class BlogController {
             return "redirect:/blog";
         }
         
-        // Проверка прав: только автор может редактировать
         String currentUser = getCurrentUsername();
         if (!post.get().getAuthor().equals(currentUser)) {
             return "redirect:/blog";
@@ -92,8 +103,6 @@ public class BlogController {
         Optional<Post> post = postRepozitori.findById(id);
         if (post.isPresent()) {
             Post article = post.get();
-            
-            // Проверка прав
             String currentUser = getCurrentUsername();
             if (article.getAuthor().equals(currentUser)) {
                 article.setTitle(title);
@@ -105,7 +114,6 @@ public class BlogController {
         return "redirect:/blog";
     }
     
-    // Удаление статьи
     @PostMapping("/blog/{id}/delete")
     public String blogDelete(@PathVariable(value = "id") long id) {
         Optional<Post> post = postRepozitori.findById(id);
@@ -116,5 +124,32 @@ public class BlogController {
             }
         }
         return "redirect:/blog";
+    }
+    
+    // НОВЫЙ МЕТОД: Экспорт в Excel
+    @GetMapping("/blog/export-excel")
+    public ResponseEntity<byte[]> exportToExcel() {
+        try {
+            String currentUser = getCurrentUsername();
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            ByteArrayInputStream excelStream = excelReportService.exportUserPostsToExcel(currentUser);
+            
+            String filename = "my_posts_" + currentUser + "_" + 
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
+            headers.add(HttpHeaders.CONTENT_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(excelStream.readAllBytes());
+                    
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
