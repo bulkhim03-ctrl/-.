@@ -3,22 +3,24 @@ package com.itproger.blog.controller;
 import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.itproger.blog.dto.ExcelRowDto;
 import com.itproger.blog.models.Post;
 import com.itproger.blog.repo.PostRepozitori;
 import com.itproger.blog.services.AuthService;
 import com.itproger.blog.services.ExcelReportService;
+import com.itproger.blog.services.ExcelReadService;
 
 @Controller
 public class BlogController {
@@ -31,6 +33,9 @@ public class BlogController {
     
     @Autowired
     private ExcelReportService excelReportService;
+    
+    @Autowired
+    private ExcelReadService excelReadService;
     
     private String getCurrentUsername() {
         try {
@@ -126,7 +131,6 @@ public class BlogController {
         return "redirect:/blog";
     }
     
-    // НОВЫЙ МЕТОД: Экспорт в Excel
     @GetMapping("/blog/export-excel")
     public ResponseEntity<byte[]> exportToExcel() {
         try {
@@ -150,6 +154,58 @@ public class BlogController {
                     
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/blog/upload-excel")
+    @ResponseBody
+    public ResponseEntity<?> uploadExcelFile(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Файл не выбран"));
+            }
+            
+            String fileName = file.getOriginalFilename();
+            if (fileName == null || (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls"))) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Выбран не тот тип файла! Поддерживаются только .xlsx и .xls"));
+            }
+            
+            java.util.List<ExcelRowDto> excelData = excelReadService.readExcelFile(file);
+            
+            if (excelData.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "message", "Файл обработан, но не содержит данных для импорта",
+                    "data", excelData
+                ));
+            }
+            
+            String currentUser = getCurrentUsername();
+            int createdCount = 0;
+            
+            for (ExcelRowDto row : excelData) {
+                if (row.getTitle() != null && !row.getTitle().trim().isEmpty()) {
+                    Post post = new Post(
+                        row.getTitle(),
+                        row.getAnons() != null ? row.getAnons() : "Импортировано из Excel",
+                        row.getFullText() != null ? row.getFullText() : "",
+                        currentUser
+                    );
+                    postRepozitori.save(post);
+                    createdCount++;
+                }
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "message", String.format("✅ Успешно создано %d постов из Excel файла!", createdCount),
+                "data", excelData
+            ));
+            
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Ошибка при обработке файла: " + e.getMessage()));
         }
     }
 }
