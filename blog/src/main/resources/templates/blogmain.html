@@ -121,10 +121,11 @@
             </div>
             <div class="post-anons" th:text="${post.anons}"></div>
             
-            <div th:if="${currentUser != null and currentUser == post.author}">
+            <!-- Кнопки видны: ADMIN'у (все посты) или автору (свои посты) -->
+            <div th:if="${currentUser != null and (currentUserRole == 'ADMIN' or currentUser == post.author)}">
                 <a th:href="@{/blog/{id}/edit(id=${post.id})}" class="btn-edit">✏️ Редактировать</a>
                 <form th:action="@{/blog/{id}/delete(id=${post.id})}" method="post" style="display: inline;">
-                    <button type="submit" class="btn-delete" onclick="return confirm('Удалить?')">🗑️ Удалить</button>
+                    <button type="submit" class="btn-delete" onclick="return confirm('Удалить статью?')">🗑️ Удалить</button>
                 </form>
             </div>
         </div>

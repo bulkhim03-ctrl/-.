@@ -44,12 +44,21 @@ public class BlogController {
             return null;
         }
     }
+    
+    private String getCurrentUserRole() {
+        try {
+            return authService.getUserLoggedInfo().role();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     @GetMapping("/blog")
     public String blogMain(Model model) {
         Iterable<Post> posts = postRepozitori.findAll();
         model.addAttribute("posts", posts);
         model.addAttribute("currentUser", getCurrentUsername());
+        model.addAttribute("currentUserRole", getCurrentUserRole());
         return "blogmain";
     }
     
@@ -66,6 +75,7 @@ public class BlogController {
         
         model.addAttribute("post", article);
         model.addAttribute("currentUser", getCurrentUsername());
+        model.addAttribute("currentUserRole", getCurrentUserRole());
         return "blogdetail";
     }
 
@@ -92,7 +102,11 @@ public class BlogController {
         }
         
         String currentUser = getCurrentUsername();
-        if (!post.get().getAuthor().equals(currentUser)) {
+        String currentUserRole = getCurrentUserRole();
+        
+        // ADMIN может редактировать любые посты
+        // Обычный пользователь только свои
+        if (!"ADMIN".equals(currentUserRole) && !post.get().getAuthor().equals(currentUser)) {
             return "redirect:/blog";
         }
         
@@ -109,7 +123,10 @@ public class BlogController {
         if (post.isPresent()) {
             Post article = post.get();
             String currentUser = getCurrentUsername();
-            if (article.getAuthor().equals(currentUser)) {
+            String currentUserRole = getCurrentUserRole();
+            
+            // ADMIN может редактировать любые посты
+            if ("ADMIN".equals(currentUserRole) || article.getAuthor().equals(currentUser)) {
                 article.setTitle(title);
                 article.setAnons(anons);
                 article.setText_full(full_text);
@@ -124,7 +141,10 @@ public class BlogController {
         Optional<Post> post = postRepozitori.findById(id);
         if (post.isPresent()) {
             String currentUser = getCurrentUsername();
-            if (post.get().getAuthor().equals(currentUser)) {
+            String currentUserRole = getCurrentUserRole();
+            
+            // ADMIN может удалять любые посты
+            if ("ADMIN".equals(currentUserRole) || post.get().getAuthor().equals(currentUser)) {
                 postRepozitori.deleteById(id);
             }
         }
