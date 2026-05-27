@@ -52,6 +52,7 @@ public class DataInitializer implements ApplicationRunner {
         Role roleUser = roleRepository.findByName(Roles.USER.name())
             .orElseThrow(() -> new RuntimeException("USER role not found!"));
 
+        // Администратор
         User admin = User.builder()
                 .username("admin")
                 .password(passwordEncoder.encode("admin"))
@@ -59,6 +60,7 @@ public class DataInitializer implements ApplicationRunner {
                 .build();
         userRepository.save(admin);
         
+        // Обычный пользователь user
         User user = User.builder()
                 .username("user")
                 .password(passwordEncoder.encode("user"))
@@ -66,7 +68,18 @@ public class DataInitializer implements ApplicationRunner {
                 .build();
         userRepository.save(user);
         
-        System.out.println("✅ Созданы пользователи: admin/admin и user/user");
+        // Пользователь string (для тестов)
+        User stringUser = User.builder()
+                .username("string")
+                .password(passwordEncoder.encode("string"))
+                .role(roleUser)
+                .build();
+        userRepository.save(stringUser);
+        
+        System.out.println("✅ Созданы пользователи:");
+        System.out.println("   - admin/admin (ADMIN)");
+        System.out.println("   - user/user (USER)");
+        System.out.println("   - string/string (USER)");
     }
     
     private void createRolesIfNotExists() {
@@ -95,11 +108,12 @@ public class DataInitializer implements ApplicationRunner {
         roleRepository.save(userRole);
         roleRepository.save(adminRole);
 
-        // Назначаем разрешения (создаём новые Set, чтобы избежать LazyInitialization)
+        // Назначаем разрешения для USER (только чтение)
         Set<Permission> userPermissions = new HashSet<>();
         userPermissions.add(postRead);
         userRole.setPermissions(userPermissions);
         
+        // Назначаем разрешения для ADMIN (все права)
         Set<Permission> adminPermissions = new HashSet<>();
         adminPermissions.add(postRead);
         adminPermissions.add(postWrite);
@@ -110,6 +124,8 @@ public class DataInitializer implements ApplicationRunner {
         roleRepository.save(adminRole);
         
         System.out.println("✅ Созданы роли: USER, ADMIN");
+        System.out.println("   - USER может: читать посты");
+        System.out.println("   - ADMIN может: читать, создавать, удалять посты");
     }
     
     private void createPermissionsIfNotExists() {
@@ -126,6 +142,9 @@ public class DataInitializer implements ApplicationRunner {
         permissionRepository.save(write);
         permissionRepository.save(delete);
         
-        System.out.println("✅ Созданы разрешения для постов");
+        System.out.println("✅ Созданы разрешения для постов:");
+        System.out.println("   - post:read");
+        System.out.println("   - post:write");
+        System.out.println("   - post:delete");
     }
 }

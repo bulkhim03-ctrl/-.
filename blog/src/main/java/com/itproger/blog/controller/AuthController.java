@@ -46,7 +46,8 @@ public class AuthController {
     @ApiResponse(responseCode = "400", description = "Ошибка валидации")
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody LoginRequest loginRequest) {
-        // Проверка минимальной длины пароля
+        System.out.println("📝 Регистрация: " + loginRequest.username());
+        
         if (loginRequest.password().length() < 4) {
             return ResponseEntity.badRequest().body("Пароль должен содержать минимум 4 символа");
         }
@@ -59,16 +60,22 @@ public class AuthController {
             // Пользователь не найден - можно создавать
         }
         
+        // Кодируем пароль
+        String encodedPassword = passwordEncoder.encode(loginRequest.password());
+        System.out.println("🔐 Закодированный пароль: " + encodedPassword);
+        
         // Создаём нового пользователя с ролью USER
         UserDto newUser = new UserDto(
             null,
             loginRequest.username(),
-            passwordEncoder.encode(loginRequest.password()),
+            encodedPassword,
             "USER",
             null
         );
         
         userService.create(newUser);
+        System.out.println("✅ Пользователь создан: " + loginRequest.username());
+        
         return ResponseEntity.ok("Регистрация успешна");
     }
 

@@ -3,7 +3,6 @@ package com.itproger.blog.services.impl;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.itproger.blog.dto.UserDto;
@@ -24,7 +23,6 @@ public class UserServiceImpl implements UserService {
     
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
 
     @Override
     public List<UserDto> getUsers() {
@@ -40,7 +38,8 @@ public class UserServiceImpl implements UserService {
             .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 
         user.setRole(role);
-        user.setPassword(passwordEncoder.encode(userDto.password()));
+        // Пароль уже закодирован в AuthController, просто сохраняем как есть
+        user.setPassword(userDto.password());
 
         return UserMapper.userToUserDto(userRepository.save(user));
     }
@@ -68,7 +67,10 @@ public class UserServiceImpl implements UserService {
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Role not found"));
 
         user.setUsername(userDto.username());
-        user.setPassword(passwordEncoder.encode(userDto.password()));
+        // Если пароль передан новый — сохраняем как есть (уже закодирован)
+        if (userDto.password() != null && !userDto.password().isEmpty()) {
+            user.setPassword(userDto.password());
+        }
         user.setRole(role);
 
         return UserMapper.userToUserDto(userRepository.save(user));

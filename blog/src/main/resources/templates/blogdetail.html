@@ -8,6 +8,8 @@
         .article-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .article-title { color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
         .article-meta { color: #666; font-size: 14px; margin: 15px 0; padding: 10px; background: #f9f9f9; border-radius: 5px; }
+        .article-image { text-align: center; margin: 20px 0; }
+        .article-image img { max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .article-content { line-height: 1.6; margin: 20px 0; }
         .btn-back { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #333; color: white; text-decoration: none; border-radius: 5px; }
         .btn-back:hover { background: #555; }
@@ -31,13 +33,17 @@
             <div>👁️ Просмотров: <span th:text="${post.views}"></span></div>
         </div>
         
+        <!-- Фото над текстом (ВАЖНО: правильный тег img) -->
+        <div class="article-image" th:if="${post.imageName != null}">
+            <img th:src="@{/uploads/{img}(img=${post.imageName})}" alt="Изображение к статье">
+        </div>
+        
         <div class="article-content">
             <p th:text="${post.text_full}">Текст статьи</p>
         </div>
         
         <a href="/blog" class="btn-back">← Назад к списку статей</a>
         
-        <!-- Кнопки видны: ADMIN'у (все посты) или автору (свои посты) -->
         <div class="article-actions" th:if="${currentUser != null and (currentUserRole == 'ADMIN' or currentUser == post.author)}">
             <a th:href="@{/blog/{id}/edit(id=${post.id})}" class="btn-edit">✏️ Редактировать</a>
             <form th:action="@{/blog/{id}/delete(id=${post.id})}" method="post" style="display: inline;">

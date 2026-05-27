@@ -1,6 +1,9 @@
 package com.itproger.blog.controller;
 
 import java.io.ByteArrayInputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -36,6 +39,9 @@ public class BlogController {
     
     @Autowired
     private ExcelReadService excelReadService;
+    
+    // Путь для сохранения фото
+    private final String UPLOAD_PATH = "C:/Users/Булат/Desktop/blog/uploads/";
     
     private String getCurrentUsername() {
         try {
@@ -87,9 +93,47 @@ public class BlogController {
     @PostMapping("/blog/add")
     public String blogPostAdd(@RequestParam String title, 
                               @RequestParam String anons, 
-                              @RequestParam String full_text) {
+                              @RequestParam String full_text,
+                              @RequestParam(value = "image", required = false) MultipartFile image) {
         String author = getCurrentUsername();
-        Post post = new Post(title, anons, full_text, author);
+        String imageName = null;
+        
+        // Обработка фото
+        if (image != null && !image.isEmpty()) {
+            String contentType = image.getContentType();
+            if (contentType != null && (contentType.equals("image/jpeg") || 
+                contentType.equals("image/png") || 
+                contentType.equals("image/gif") || 
+                contentType.equals("image/jpg"))) {
+                try {
+                    // Очищаем имя файла - только латиница и цифры
+                    String originalName = image.getOriginalFilename();
+                    String extension = "";
+                    if (originalName != null && originalName.contains(".")) {
+                        extension = originalName.substring(originalName.lastIndexOf("."));
+                    }
+                    imageName = System.currentTimeMillis() + extension;
+                    
+                    // Создаём папку если её нет
+                    java.io.File dir = new java.io.File(UPLOAD_PATH);
+                    if (!dir.exists()) {
+                        dir.mkdirs();
+                    }
+                    
+                    // Сохраняем файл
+                    Path path = Paths.get(UPLOAD_PATH + imageName);
+                    Files.write(path, image.getBytes());
+                    
+                    System.out.println("✅ Фото сохранено: " + imageName);
+                    
+                } catch (Exception e) {
+                    System.out.println("❌ Ошибка сохранения фото: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+        
+        Post post = new Post(title, anons, full_text, author, imageName);
         postRepozitori.save(post);
         return "redirect:/blog";
     }
@@ -105,7 +149,6 @@ public class BlogController {
         String currentUserRole = getCurrentUserRole();
         
         // ADMIN может редактировать любые посты
-        // Обычный пользователь только свои
         if (!"ADMIN".equals(currentUserRole) && !post.get().getAuthor().equals(currentUser)) {
             return "redirect:/blog";
         }
@@ -118,18 +161,63 @@ public class BlogController {
     public String blogPostUpdate(@PathVariable(value = "id") long id,
                                  @RequestParam String title,
                                  @RequestParam String anons,
-                                 @RequestParam String full_text) {
+                                 @RequestParam String full_text,
+                                 @RequestParam(value = "image", required = false) MultipartFile image) {
         Optional<Post> post = postRepozitori.findById(id);
         if (post.isPresent()) {
             Post article = post.get();
             String currentUser = getCurrentUsername();
             String currentUserRole = getCurrentUserRole();
             
-            // ADMIN может редактировать любые посты
             if ("ADMIN".equals(currentUserRole) || article.getAuthor().equals(currentUser)) {
                 article.setTitle(title);
                 article.setAnons(anons);
                 article.setText_full(full_text);
+                
+                // Обработка нового фото
+                if (image != null && !image.isEmpty()) {
+                    String contentType = image.getContentType();
+                    if (contentType != null && (contentType.equals("image/jpeg") || 
+                        contentType.equals("image/png") || 
+                        contentType.equals("image/gif") || 
+                        contentType.equals("image/jpg"))) {
+                        try {
+                            // Удаляем старое фото если есть
+                            if (article.getImageName() != null) {
+                                java.io.File oldFile = new java.io.File(UPLOAD_PATH + article.getImageName());
+                                if (oldFile.exists()) {
+                                    oldFile.delete();
+                                }
+                            }
+                            
+                            // Очищаем имя файла - только латиница и цифры
+                            String originalName = image.getOriginalFilename();
+                            String extension = "";
+                            if (originalName != null && originalName.contains(".")) {
+                                extension = originalName.substring(originalName.lastIndexOf("."));
+                            }
+                            String imageName = System.currentTimeMillis() + extension;
+                            
+                            // Создаём папку если её нет
+                            java.io.File dir = new java.io.File(UPLOAD_PATH);
+                            if (!dir.exists()) {
+                                dir.mkdirs();
+                            }
+                            
+                            // Сохраняем файл
+                            Path path = Paths.get(UPLOAD_PATH + imageName);
+                            Files.write(path, image.getBytes());
+                            article.setImageName(imageName);
+                            
+                            System.out.println("✅ Фото обновлено: " + imageName);
+                            
+                        } catch (Exception e) {
+                            System.out.println("❌ Ошибка обновления фото: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                
                 postRepozitori.save(article);
             }
         }
@@ -143,12 +231,46 @@ public class BlogController {
             String currentUser = getCurrentUsername();
             String currentUserRole = getCurrentUserRole();
             
-            // ADMIN может удалять любые посты
             if ("ADMIN".equals(currentUserRole) || post.get().getAuthor().equals(currentUser)) {
+                // Удаляем фото если есть
+                if (post.get().getImageName() != null) {
+                    java.io.File file = new java.io.File(UPLOAD_PATH + post.get().getImageName());
+                    if (file.exists()) {
+                        file.delete();
+                        System.out.println("✅ Фото удалено: " + post.get().getImageName());
+                    }
+                }
                 postRepozitori.deleteById(id);
             }
         }
         return "redirect:/blog";
+    }
+    
+    // Прямой доступ к фото через контроллер (обходит Config)
+    @GetMapping("/uploads/{filename}")
+    @ResponseBody
+    public ResponseEntity<byte[]> getImage(@PathVariable String filename) {
+        try {
+            Path path = Paths.get(UPLOAD_PATH + filename);
+            if (!Files.exists(path)) {
+                System.out.println("❌ Файл не найден: " + filename);
+                return ResponseEntity.notFound().build();
+            }
+            
+            byte[] image = Files.readAllBytes(path);
+            String contentType = Files.probeContentType(path);
+            
+            if (contentType == null) {
+                contentType = "image/jpeg";
+            }
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .body(image);
+        } catch (Exception e) {
+            System.out.println("❌ Ошибка загрузки фото: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
     
     @GetMapping("/blog/export-excel")

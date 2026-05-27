@@ -4,68 +4,112 @@
     <title>Редактирование статьи</title>
     <meta charset="UTF-8">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .edit-container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-family: Arial;
-        }
-        textarea {
-            height: 200px;
-            resize: vertical;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        button:hover {
-            background: #45a049;
-        }
-        .btn-back {
-            background: #666;
-        }
-        .btn-back:hover {
-            background: #555;
-        }
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+        .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 20px; }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        textarea { height: 150px; resize: vertical; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        .btn-back { background: #666; text-decoration: none; display: inline-block; margin-left: 10px; }
+        .btn-back:hover { background: #555; }
+        .current-image { margin: 15px 0; padding: 15px; background: #f9f9f9; border-radius: 5px; text-align: center; }
+        .current-image img { max-width: 200px; border-radius: 5px; }
+        .preview-img { max-width: 200px; margin-top: 10px; display: none; }
+        .error { color: red; margin-top: 5px; font-size: 14px; }
+        .image-preview { margin: 10px 0; }
     </style>
 </head>
 <body>
     <div th:insert="main_html :: main_html"></div>
     
-    <div class="edit-container">
+    <div class="form-container">
         <h1>✏️ Редактирование статьи</h1>
         
-        <form th:action="@{/blog/{id}/edit(id=${post.id})}" method="post">
-            <input type="text" name="title" th:value="${post.title}" placeholder="Заголовок статьи" required><br>
-            <input type="text" name="anons" th:value="${post.anons}" placeholder="Анонс статьи" required><br>
-            <textarea name="full_text" placeholder="Текст статьи" required th:text="${post.text_full}"></textarea><br>
-            <button type="submit">💾 Сохранить изменения</button>
-            <a href="/blog" class="btn-back" style="display: inline-block; text-decoration: none; background: #666; color: white; padding: 10px 20px; border-radius: 5px;">❌ Отмена</a>
+        <form id="editForm" enctype="multipart/form-data">
+            <input type="text" id="title" th:value="${post.title}" placeholder="Заголовок" required>
+            <input type="text" id="anons" th:value="${post.anons}" placeholder="Анонс" required>
+            <textarea id="full_text" placeholder="Текст" required th:text="${post.text_full}"></textarea>
+            
+            <!-- Текущее фото -->
+            <div class="current-image" th:if="${post.imageName != null}">
+                <label>📷 Текущее фото:</label><br>
+                <img th:src="@{/uploads/{img}(img=${post.imageName})}" alt="Текущее фото">
+                <div><small>Загрузите новое фото, чтобы заменить</small></div>
+            </div>
+            
+            <!-- Загрузка нового фото -->
+            <div>
+                <label>📷 Новое фото (необязательно):</label>
+                <input type="file" id="image" accept="image/jpeg,image/png,image/gif,image/jpg">
+                <div id="imageError" class="error"></div>
+                <div class="image-preview">
+                    <img id="preview" class="preview-img" src="#" alt="Предпросмотр">
+                </div>
+            </div>
+            
+            <button type="submit">💾 Сохранить</button>
+            <a href="/blog" class="btn-back">❌ Отмена</a>
         </form>
     </div>
+    
+    <script>
+        // Предпросмотр
+        document.getElementById('image').onchange = function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('preview');
+            const errorDiv = document.getElementById('imageError');
+            
+            if (file) {
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+                if (!allowedTypes.includes(file.type)) {
+                    errorDiv.innerText = '❌ Неверный формат! Поддерживаются: JPG, PNG, GIF';
+                    preview.style.display = 'none';
+                    this.value = '';
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    errorDiv.innerText = '❌ Файл слишком большой! Максимум 5MB';
+                    preview.style.display = 'none';
+                    this.value = '';
+                    return;
+                }
+                errorDiv.innerText = '';
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        
+        // Отправка формы
+        document.getElementById('editForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value);
+            formData.append('anons', document.getElementById('anons').value);
+            formData.append('full_text', document.getElementById('full_text').value);
+            
+            const imageFile = document.getElementById('image').files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+            
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            
+            if (response.redirected || response.ok) {
+                window.location.href = '/blog';
+            } else {
+                alert('Ошибка при сохранении');
+            }
+        };
+    </script>
 </body>
 </html>

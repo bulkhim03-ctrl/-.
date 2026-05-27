@@ -5,7 +5,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.itproger.blog.exception.ResourceNotFoundException;
 import com.itproger.blog.repo.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -19,6 +18,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
-            .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден: " + username));
+            .orElseThrow(() -> new UsernameNotFoundException("Пользователь не найден: " + username));
     }
 }

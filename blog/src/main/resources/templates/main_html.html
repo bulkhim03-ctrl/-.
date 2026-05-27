@@ -1,14 +1,47 @@
-<div th:fragment="main_html">
-    <header class="header">
-        <div class="nav-container">
-            <span class="creator">Создатель Хисамиев Булат</span>
-            <div class="divider"></div>
-            <div class="nav-links">
-                <a href="/">Главная</a>
-                <a href="/blog">Некоторые статьи</a>
-                <a href="/blog/add">Добавление статей</a>
-                <a href="#" class="dev">В разработке</a>
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <div th:fragment="main_html">
+        <header class="header">
+            <div class="nav-container">
+                <span class="creator">Создатель Хисамиев Булат</span>
+                <div class="divider"></div>
+                <div class="nav-links">
+                    <a href="/">Главная</a>
+                    <a href="/blog">Некоторые статьи</a>
+                    <a href="/blog/add">Добавление статей</a>
+                    <a href="#" class="dev">В разработке</a>
+                </div>
+                
+                <!-- БЛОК АВТОРИЗАЦИИ -->
+                <div class="auth-links">
+                    <div th:if="${currentUser == null}">
+                        <a href="/login-page" class="auth-btn login-btn">🔐 Вход</a>
+                        <a href="/register" class="auth-btn register-btn">📝 Регистрация</a>
+                    </div>
+                    <div th:if="${currentUser != null}">
+                        <span class="user-welcome">👋 Привет, <strong th:text="${currentUser}"></strong>!</span>
+                        <a href="#" onclick="logout()" class="auth-btn logout-btn">🚪 Выход</a>
+                    </div>
+                </div>
             </div>
-        </div>
-    </header>
-</div>
+        </header>
+    </div>
+    
+    <script>
+        function logout() {
+            fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            }).catch(e => console.log('Logout error:', e));
+            
+            document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie = "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            window.location.href = "/login-page";
+        }
+    </script>
+</body>
+</html>

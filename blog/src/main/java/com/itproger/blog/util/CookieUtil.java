@@ -18,7 +18,7 @@ public class CookieUtil {
         return ResponseCookie.from(accessTokenCookieName, accessToken)
                 .maxAge(duration)
                 .httpOnly(true)
-                .secure(false)  // Для localhost false, для HTTPS true
+                .secure(false)
                 .path("/")
                 .sameSite("Lax")
                 .build();

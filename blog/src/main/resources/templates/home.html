@@ -30,6 +30,7 @@
             display: flex;
             align-items: center;
             gap: 20px;
+            flex-wrap: wrap;
         }
 
         .creator {
@@ -68,6 +69,54 @@
         .dev:hover {
             color: #999 !important;
         }
+        
+        /* Блок авторизации */
+        .auth-links {
+            margin-left: auto;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .auth-btn {
+            padding: 8px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn {
+            background: #667eea;
+            color: white;
+        }
+        
+        .login-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .register-btn {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .register-btn:hover {
+            background: #38a169;
+        }
+        
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .logout-btn:hover {
+            background: #c53030;
+        }
+        
+        .user-welcome {
+            color: #333;
+            font-size: 14px;
+        }
 
         /* Темная линия снизу */
         .bottom-line {
@@ -94,11 +143,32 @@
             color: #666;
             font-size: 1.2rem;
         }
+        
+        .feature-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .feature-btn {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Шапка сайта -->
     <div th:insert="main_html :: main_html"></div>
 
     <!-- Темная линия снизу шапки -->
@@ -108,6 +178,16 @@
     <div class="content">
         <h1 th:text="${title}">Заголовок</h1>
         <p>Добро пожаловать на данный сайт!</p>
+        
+        <div class="feature-buttons" th:if="${currentUser == null}">
+            <a href="/login-page" class="feature-btn">🔐 Войти в аккаунт</a>
+            <a href="/register" class="feature-btn">📝 Создать аккаунт</a>
+        </div>
+        
+        <div class="feature-buttons" th:if="${currentUser != null}">
+            <a href="/blog" class="feature-btn">📚 Перейти к статьям</a>
+            <a href="/blog/add" class="feature-btn">✏️ Создать статью</a>
+        </div>
     </div>
 
 </body>

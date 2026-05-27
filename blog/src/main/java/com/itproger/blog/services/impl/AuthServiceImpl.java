@@ -2,9 +2,7 @@ package com.itproger.blog.services.impl;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -56,64 +54,57 @@ public class AuthServiceImpl implements AuthService {
     
     @Override
     public ResponseEntity<LoginResponse> login(LoginRequest loginRequest, String accessToken, String refreshToken) {
-        Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password())
-        );
+        System.out.println("🔐 Попытка входа: " + loginRequest.username());
         
-        String username = loginRequest.username();
-        User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
-
-        boolean accessTokenValid = tokenProvider.validateToken(accessToken);
-        boolean refreshTokenValid = tokenProvider.validateToken(refreshToken);
-
-        HttpHeaders responseHeaders = new HttpHeaders();
-        Token newAccessToken, newRefreshToken;
-
-        revokeAllTokenOfUser(user);
-
-        if (!accessTokenValid && !refreshTokenValid) {
-            newAccessToken = tokenProvider.generateAccessToken(
-                Map.of("role", user.getRole().getAuthority()),
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password())
+            );
+            
+            String username = loginRequest.username();
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
+            
+            System.out.println("✅ Аутентификация успешна для: " + username);
+            
+            // Удаляем старые токены пользователя
+            if (user.getTokens() != null) {
+                tokenRepository.deleteAll(user.getTokens());
+            }
+            
+            // Генерируем токены
+            Token newAccessToken = tokenProvider.generateAccessToken(
+                Map.of("role", user.getRole() != null ? user.getRole().getAuthority() : "USER"),
                 accessTokenDurationMinute, ChronoUnit.MINUTES, user
             );
-            newRefreshToken = tokenProvider.generateRefreshToken(
+            
+            Token newRefreshToken = tokenProvider.generateRefreshToken(
                 refreshTokenDurationDay, ChronoUnit.DAYS, user
             );
+            
             newAccessToken.setUser(user);
             newRefreshToken.setUser(user);
-            tokenRepository.saveAll(List.of(newAccessToken, newRefreshToken));
-            addAccessTokenCookie(responseHeaders, newAccessToken);
-            addRefreshTokenCookie(responseHeaders, newRefreshToken);
+            
+            // Сохраняем токены
+            tokenRepository.save(newAccessToken);
+            tokenRepository.save(newRefreshToken);
+            
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.add(HttpHeaders.SET_COOKIE, 
+                cookieUtil.createAccessTokenCookie(newAccessToken.getValue(), accessTokenDurationSecond).toString());
+            responseHeaders.add(HttpHeaders.SET_COOKIE, 
+                cookieUtil.createRefreshTokenCookie(newRefreshToken.getValue(), refreshTokenDurationSecond).toString());
+            
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            
+            LoginResponse loginResponse = new LoginResponse(true, user.getRole() != null ? user.getRole().getName() : "USER");
+            return ResponseEntity.ok().headers(responseHeaders).body(loginResponse);
+            
+        } catch (Exception e) {
+            System.out.println("❌ Ошибка аутентификации: " + e.getMessage());
+            e.printStackTrace();
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Неверные учетные данные пользователя");
         }
-
-        if (!accessTokenValid && refreshTokenValid) {
-            newAccessToken = tokenProvider.generateAccessToken(
-                Map.of("role", user.getRole().getAuthority()),
-                accessTokenDurationMinute, ChronoUnit.MINUTES, user
-            );
-            addAccessTokenCookie(responseHeaders, newAccessToken);
-        }
-
-        if (accessTokenValid && refreshTokenValid) {
-            newAccessToken = tokenProvider.generateAccessToken(
-                Map.of("role", user.getRole().getAuthority()),
-                accessTokenDurationMinute, ChronoUnit.MINUTES, user
-            );
-            newRefreshToken = tokenProvider.generateRefreshToken(
-                refreshTokenDurationDay, ChronoUnit.DAYS, user
-            );
-            newAccessToken.setUser(user);
-            newRefreshToken.setUser(user);
-            tokenRepository.saveAll(List.of(newAccessToken, newRefreshToken));
-            addAccessTokenCookie(responseHeaders, newAccessToken);
-            addRefreshTokenCookie(responseHeaders, newRefreshToken);
-        }
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        LoginResponse loginResponse = new LoginResponse(true, user.getRole().getName());
-        return ResponseEntity.ok().headers(responseHeaders).body(loginResponse);
     }
     
     @Override
@@ -131,8 +122,11 @@ public class AuthServiceImpl implements AuthService {
             accessTokenDurationMinute, ChronoUnit.MINUTES, user
         );
 
+        tokenRepository.save(newAccessToken);
+
         HttpHeaders responseHeaders = new HttpHeaders();
-        addAccessTokenCookie(responseHeaders, newAccessToken);
+        responseHeaders.add(HttpHeaders.SET_COOKIE, 
+            cookieUtil.createAccessTokenCookie(newAccessToken.getValue(), accessTokenDurationSecond).toString());
 
         LoginResponse loginResponse = new LoginResponse(true, user.getRole().getName());
         return ResponseEntity.ok().headers(responseHeaders).body(loginResponse);
@@ -142,11 +136,13 @@ public class AuthServiceImpl implements AuthService {
     public ResponseEntity<LoginResponse> logout(String accessToken, String refreshToken) {
         SecurityContextHolder.clearContext();
 
-        String username = tokenProvider.getUsernameFromToken(accessToken);
-        User user = userRepository.findByUsername(username)
-            .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
-
-        revokeAllTokenOfUser(user);
+        if (accessToken != null) {
+            String username = tokenProvider.getUsernameFromToken(accessToken);
+            User user = userRepository.findByUsername(username).orElse(null);
+            if (user != null && user.getTokens() != null) {
+                tokenRepository.deleteAll(user.getTokens());
+            }
+        }
 
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add(HttpHeaders.SET_COOKIE, cookieUtil.deleteAccessTokenCookie().toString());
@@ -167,29 +163,5 @@ public class AuthServiceImpl implements AuthService {
             .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "User not found"));
 
         return UserMapper.userToUserLoggedDto(user);
-    }
-    
-    private void addAccessTokenCookie(HttpHeaders httpHeaders, Token token) {
-        httpHeaders.add(HttpHeaders.SET_COOKIE, 
-            cookieUtil.createAccessTokenCookie(token.getValue(), accessTokenDurationSecond).toString());
-    }
-    
-    private void addRefreshTokenCookie(HttpHeaders httpHeaders, Token token) {
-        httpHeaders.add(HttpHeaders.SET_COOKIE, 
-            cookieUtil.createRefreshTokenCookie(token.getValue(), refreshTokenDurationSecond).toString());
-    }
-    
-    private void revokeAllTokenOfUser(User user) {
-        Set<Token> tokens = user.getTokens();
-        if (tokens != null) {
-            tokens.forEach(token -> {
-                if (token.getExpiryDate().isBefore(LocalDateTime.now()))
-                    tokenRepository.delete(token);
-                else if (!token.isDisabled()) {
-                    token.setDisabled(true);
-                    tokenRepository.save(token);
-                }
-            });
-        }
     }
 }

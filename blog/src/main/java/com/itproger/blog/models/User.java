@@ -1,7 +1,6 @@
 package com.itproger.blog.models;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -41,15 +40,19 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        Set<String> authorities = new HashSet<>();
-        if (role != null && role.getPermissions() != null) {
-            role.getPermissions()
-                .forEach(permission -> authorities.add(permission.getAuthority()));
-            authorities.add(role.getAuthority());
+        if (role == null) {
+            return java.util.Collections.emptyList();
         }
-        return authorities.stream()
-            .map(SimpleGrantedAuthority::new)
-            .collect(Collectors.toSet());
+        
+        // Собираем все разрешения роли
+        Collection<SimpleGrantedAuthority> authorities = role.getPermissions().stream()
+            .map(permission -> new SimpleGrantedAuthority(permission.getAuthority()))
+            .collect(Collectors.toList());
+        
+        // Добавляем саму роль как authority
+        authorities.add(new SimpleGrantedAuthority(role.getAuthority()));
+        
+        return authorities;
     }
 
     @Override
